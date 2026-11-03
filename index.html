@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Lente</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#000; --panel:#17181b; --panel2:#24262b; --fg:#f5f5f6; --mut:#a8a8b2;
+  --acc:#ffd60a; --line:#33353b; --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font:16px/1.3 system-ui,Roboto,"Segoe UI",sans-serif;overflow:hidden;
+  overscroll-behavior:none;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+
+#app{position:fixed;inset:0;display:grid;grid-template-rows:minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+
+/* ---- Palco immagine ---- */
+#stage{position:relative;overflow:hidden;background:#000;isolation:isolate;touch-action:none;min-height:0}
+.layer{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;
+  transform-origin:50% 50%;will-change:transform,filter;background:#000}
+#frozen{display:none}
+#tint{position:absolute;inset:0;mix-blend-mode:multiply;pointer-events:none;display:none}
+.badges{position:absolute;left:12px;top:12px;display:flex;gap:8px;z-index:5;pointer-events:none;flex-wrap:wrap}
+.badge{background:rgba(0,0,0,.72);color:var(--fg);border:1px solid rgba(255,255,255,.25);
+  padding:6px 14px;border-radius:999px;font-weight:700;font-size:20px;letter-spacing:.2px;
+  font-variant-numeric:tabular-nums}
+.badge.lock{color:#000;background:var(--acc);border-color:var(--acc);font-size:14px;display:none;align-items:center}
+#hint,#toast{position:absolute;left:50%;transform:translateX(-50%);z-index:6;
+  background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);border-radius:14px;
+  padding:10px 16px;text-align:center;width:max-content;max-width:calc(100% - 24px);pointer-events:none;
+  opacity:0;transition:opacity .25s}
+#hint{bottom:16px}
+#toast{top:64px}
+#hint.show,#toast.show{opacity:1}
+
+#msg{position:absolute;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;padding:28px;text-align:center;background:#0c0c0e}
+#msg h2{margin:0;font-size:22px}
+#msg p{margin:0;color:var(--mut);max-width:34ch}
+#msg button{background:var(--acc);color:#000;border:0;border-radius:14px;padding:14px 26px;font-weight:700;font-size:18px}
+
+/* ---- Pannello comandi ---- */
+#panel{background:var(--panel);border-top:1px solid var(--line);padding:10px 12px 12px;
+  display:flex;flex-direction:column;gap:10px;touch-action:manipulation}
+.zrow{display:flex;align-items:center;gap:10px}
+.rb{flex:none;width:56px;height:56px;border-radius:50%;border:1px solid var(--line);
+  background:var(--panel2);font-size:30px;line-height:1;font-weight:500}
+.rb:active{background:#34373e}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:44px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:99px;background:#3b3d44}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;border-radius:50%;
+  background:var(--acc);margin-top:-13px;border:3px solid #000;box-shadow:0 0 0 1px var(--acc)}
+input[type=range]::-moz-range-track{height:8px;border-radius:99px;background:#3b3d44}
+input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--acc);border:3px solid #000}
+
+.chips{display:flex;gap:8px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;padding:2px 0}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--panel2);border-radius:999px;
+  padding:10px 16px;font-size:15px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.chip i{width:18px;height:18px;border-radius:50%;border:1px solid #888;display:inline-block}
+.chip[aria-pressed=true]{background:var(--acc);color:#000;border-color:var(--acc)}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px}
+.btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  min-height:68px;padding:8px 4px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--panel2);font-size:13px;font-weight:600}
+.btn svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.btn:active{background:#34373e}
+.btn[aria-pressed=true]{background:var(--acc);color:#000;border-color:var(--acc)}
+.btn[hidden]{display:none}
+
+#adjust{display:none;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+#adjust.open{display:flex}
+.arow{display:flex;align-items:center;gap:10px}
+.arow label{width:78px;font-size:14px;color:var(--mut)}
+.arow output{width:44px;text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--mut)}
+#reset{align-self:flex-end;background:none;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px}
+
+/* ---- Schermo largo / interno del Fold: comandi a destra ---- */
+@media (min-aspect-ratio: 1/1){
+  #app{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) clamp(300px,34vw,400px)}
+  #panel{border-top:0;border-left:1px solid var(--line);overflow-y:auto;justify-content:center;gap:14px;padding:14px}
+  .rb{width:60px;height:60px}
+  .chips{flex-wrap:wrap;overflow:visible}
+}
+@media (max-height:430px) and (min-aspect-ratio: 1/1){
+  .btn{min-height:56px}.btn span{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <video id="video" class="layer" playsinline muted autoplay></video>
+    <canvas id="frozen" class="layer"></canvas>
+    <div id="tint"></div>
+    <div class="badges"><div class="badge" id="zval">×1.0</div><div class="badge lock" id="lockb">FERMO</div></div>
+    <div id="toast" role="status"></div>
+    <div id="hint">Pizzica per ingrandire · trascina per spostare</div>
+    <div id="msg">
+      <h2 id="msgT">Fotocamera</h2>
+      <p id="msgP"></p>
+      <button id="retry">Attiva fotocamera</button>
+    </div>
+  </div>
+
+  <aside id="panel">
+    <div class="zrow">
+      <button class="rb" id="zout" aria-label="Riduci zoom">−</button>
+      <input id="zoom" type="range" min="0" max="1000" value="0" aria-label="Zoom">
+      <button class="rb" id="zin" aria-label="Aumenta zoom">+</button>
+    </div>
+
+    <div class="chips" id="chips" role="group" aria-label="Filtro colore"></div>
+
+    <div class="grid">
+      <button class="btn" id="bFreeze" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg><span>Blocca</span></button>
+      <button class="btn" id="bTorch" aria-pressed="false" hidden>
+        <svg viewBox="0 0 24 24"><path d="M9 3h6l-1 5h-4z"/><path d="M10 8v3l-2 2v8h8v-8l-2-2V8"/><path d="M12 14v3"/></svg><span>Luce</span></button>
+      <button class="btn" id="bCam" hidden>
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg><span id="camL">Camera</span></button>
+      <button class="btn" id="bSnap">
+        <svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/></svg><span>Salva foto</span></button>
+      <button class="btn" id="bAdj" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2" fill="#17181b"/><circle cx="15" cy="12" r="2" fill="#17181b"/><circle cx="8" cy="18" r="2" fill="#17181b"/></svg><span>Regola</span></button>
+    </div>
+
+    <div id="adjust">
+      <div class="arow"><label for="bri">Luminosità</label><input id="bri" type="range" min="50" max="200" value="100"><output id="briV">100%</output></div>
+      <div class="arow"><label for="con">Contrasto</label><input id="con" type="range" min="50" max="300" value="100"><output id="conV">100%</output></div>
+      <button id="reset">Ripristina</button>
+    </div>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), video = $('#video'), frozen = $('#frozen'), tint = $('#tint');
+const slider = $('#zoom'), zval = $('#zval'), lockb = $('#lockb');
+const bFreeze = $('#bFreeze'), bTorch = $('#bTorch'), bCam = $('#bCam'), bSnap = $('#bSnap'), bAdj = $('#bAdj');
+
+const MODES = {
+  normal: { label: 'Colori',          f: '',                                        t: null,      dot: 'linear-gradient(135deg,#e33,#3b3,#33e)' },
+  bw:     { label: 'Bianco e nero',   f: 'grayscale(1) contrast(1.8)',              t: null,      dot: 'linear-gradient(90deg,#000 50%,#fff 50%)' },
+  neg:    { label: 'Bianco su nero',  f: 'invert(1) grayscale(1) contrast(1.5)',    t: null,      dot: 'linear-gradient(90deg,#fff 50%,#000 50%)' },
+  ynb:    { label: 'Giallo su nero',  f: 'invert(1) grayscale(1) contrast(1.5)',    t: '#ffd60a', dot: 'linear-gradient(90deg,#ffd60a 50%,#000 50%)' },
+  byn:    { label: 'Nero su giallo',  f: 'grayscale(1) contrast(1.8)',              t: '#ffd60a', dot: 'linear-gradient(90deg,#000 50%,#ffd60a 50%)' },
+};
+
+// ---- stato ----
+let stream = null, track = null, caps = {};
+let devices = [], devIdx = 0;
+let hw = false, hwMin = 1, hwMax = 1, hwCur = 1, hasTorch = false, focusCont = false;
+let Z = 1, panX = 0, panY = 0, D = 1;
+let isFrozen = false, torchOn = false;
+let mode = 'normal', bright = 1, contrast = 1;
+
+// ---- impostazioni salvate (opzionali) ----
+try {
+  const s = JSON.parse(localStorage.getItem('lente') || '{}');
+  if (MODES[s.mode]) mode = s.mode;
+  if (s.bright >= .5 && s.bright <= 2) bright = s.bright;
+  if (s.contrast >= .5 && s.contrast <= 3) contrast = s.contrast;
+} catch (e) {}
+const save = () => { try { localStorage.setItem('lente', JSON.stringify({ mode, bright, contrast })); } catch (e) {} };
+
+// ---- utilità UI ----
+let toastT;
+function toast(t, ms = 2200) {
+  const el = $('#toast'); el.textContent = t; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), ms);
+}
+function showMsg(title, text, btn = 'Riprova') {
+  $('#msgT').textContent = title; $('#msgP').textContent = text; $('#retry').textContent = btn;
+  $('#msg').style.display = 'flex';
+}
+const hideMsg = () => { $('#msg').style.display = 'none'; };
+
+// ---- filtri ----
+function filterString() {
+  return `brightness(${bright}) contrast(${contrast}) ${MODES[mode].f}`.trim();
+}
+function applyFilter() {
+  const f = filterString();
+  video.style.filter = f; frozen.style.filter = f;
+  const t = MODES[mode].t;
+  tint.style.display = t ? 'block' : 'none';
+  if (t) tint.style.background = t;
+  document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c.dataset.m === mode));
+  $('#bri').value = Math.round(bright * 100); $('#briV').textContent = Math.round(bright * 100) + '%';
+  $('#con').value = Math.round(contrast * 100); $('#conV').textContent = Math.round(contrast * 100) + '%';
+}
+const chips = $('#chips');
+for (const [k, m] of Object.entries(MODES)) {
+  const b = document.createElement('button');
+  b.className = 'chip'; b.dataset.m = k; b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = `<i style="background:${m.dot}"></i>${m.label}`;
+  b.onclick = () => { mode = k; applyFilter(); save(); };
+  chips.appendChild(b);
+}
+$('#bri').oninput = e => { bright = e.target.value / 100; applyFilter(); save(); };
+$('#con').oninput = e => { contrast = e.target.value / 100; applyFilter(); save(); };
+$('#reset').onclick = () => { bright = 1; contrast = 1; applyFilter(); save(); };
+bAdj.onclick = () => {
+  const open = $('#adjust').classList.toggle('open');
+  bAdj.setAttribute('aria-pressed', open);
+};
+
+// ---- zoom ----
+const lo = () => hw ? hwMin : 1;
+const hi = () => hw ? Math.min(hwMax * 3, 40) : 8;
+const activeLayer = () => isFrozen ? frozen : video;
+
+let busy = false, dirty = false, zHw = 1;
+async function applyCons() {
+  const a = {};
+  if (hw) a.zoom = zHw;
+  if (hasTorch) a.torch = torchOn;
+  if (focusCont) a.focusMode = 'continuous';
+  if (Object.keys(a).length) await track.applyConstraints({ advanced: [a] });
+}
+async function pushHw() {
+  if (!track) return;
+  if (busy) { dirty = true; return; }
+  busy = true;
+  do { dirty = false; try { await applyCons(); } catch (e) {} } while (dirty);
+  busy = false;
+}
+
+function setZoom(z) {
+  const l = isFrozen ? hwCur : lo();
+  Z = Math.min(hi(), Math.max(l, z));
+  sync();
+}
+function sync() {
+  const L = lo(), H = hi();
+  slider.value = Math.round(1000 * Math.log(Z / L) / Math.log(H / L));
+  zval.textContent = '×' + (Z < 10 ? Z.toFixed(1) : Math.round(Z));
+  let base = 1;
+  if (isFrozen) base = hwCur;
+  else if (hw) { base = Math.min(Math.max(Z, hwMin), hwMax); if (Math.abs(base - zHw) > 0.005) { zHw = base; pushHw(); } }
+  D = Math.max(1, Z / base);
+  clampPan(); transform();
+}
+function clampPan() {
+  const mx = (D - 1) * stage.clientWidth / 2, my = (D - 1) * stage.clientHeight / 2;
+  panX = Math.min(mx, Math.max(-mx, panX)); panY = Math.min(my, Math.max(-my, panY));
+}
+function transform() {
+  const t = `translate(${panX}px,${panY}px) scale(${D})`;
+  video.style.transform = t; frozen.style.transform = t;
+}
+slider.oninput = () => {
+  const L = lo(), H = hi();
+  setZoom(L * Math.pow(H / L, slider.value / 1000));
+};
+$('#zin').onclick = () => setZoom(Z * 1.25);
+$('#zout').onclick = () => setZoom(Z / 1.25);
+
+// ---- gesti: pizzica = zoom, trascina = sposta ----
+const ptrs = new Map();
+let d0 = 0, z0 = 1;
+const pdist = () => { const [a, b] = [...ptrs.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+stage.addEventListener('pointerdown', e => {
+  if (e.target.closest('#msg')) return;
+  stage.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 2) { d0 = pdist(); z0 = Z; }
+  hideHint();
+});
+stage.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size >= 2) setZoom(z0 * pdist() / d0);
+  else if (D > 1.001) { panX += dx; panY += dy; clampPan(); transform(); }
+});
+const up = e => { ptrs.delete(e.pointerId); if (ptrs.size === 1) { /* riparte il trascinamento */ } };
+stage.addEventListener('pointerup', up);
+stage.addEventListener('pointercancel', up);
+stage.addEventListener('wheel', e => { e.preventDefault(); setZoom(Z * Math.exp(-e.deltaY / 400)); }, { passive: false });
+let hintHidden = false;
+function hideHint() { if (!hintHidden) { hintHidden = true; $('#hint').classList.remove('show'); } }
+
+// ---- blocca immagine ----
+function setFrozen(on) {
+  if (on) {
+    const w = video.videoWidth, h = video.videoHeight; if (!w) return;
+    frozen.width = w; frozen.height = h;
+    frozen.getContext('2d').drawImage(video, 0, 0, w, h);
+    hwCur = hw ? ((track.getSettings && track.getSettings().zoom) || zHw) : 1;
+    isFrozen = true; frozen.style.display = 'block'; video.style.visibility = 'hidden';
+    if (Z < hwCur) Z = hwCur;
+  } else {
+    isFrozen = false; frozen.style.display = 'none'; video.style.visibility = 'visible';
+  }
+  bFreeze.setAttribute('aria-pressed', isFrozen);
+  bFreeze.querySelector('span').textContent = isFrozen ? 'Riprendi' : 'Blocca';
+  bFreeze.querySelector('svg').innerHTML = isFrozen
+    ? '<path d="M8 5l11 7-11 7z"/>'
+    : '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
+  lockb.style.display = isFrozen ? 'flex' : 'none';
+  sync();
+}
+bFreeze.onclick = () => setFrozen(!isFrozen);
+
+// ---- torcia ----
+bTorch.onclick = async () => {
+  torchOn = !torchOn;
+  try { await applyCons(); } catch (e) { torchOn = !torchOn; toast('Luce non disponibile su questa camera'); }
+  bTorch.setAttribute('aria-pressed', torchOn);
+};
+
+// ---- foto ----
+bSnap.onclick = async () => {
+  const src = isFrozen ? frozen : video;
+  const sw = isFrozen ? frozen.width : video.videoWidth, sh = isFrozen ? frozen.height : video.videoHeight;
+  if (!sw) return toast('Nessuna immagine da salvare');
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const s = Math.max(W / sw, H / sh) * D;               // pixel di schermo per pixel sorgente
+  const rw = W / s, rh = H / s;
+  const cx = sw / 2 - panX / s, cy = sh / 2 - panY / s;
+  const out = document.createElement('canvas');
+  out.width = Math.round(rw); out.height = Math.round(rh);
+  const ctx = out.getContext('2d');
+  ctx.filter = filterString() || 'none';
+  ctx.drawImage(src, cx - rw / 2, cy - rh / 2, rw, rh, 0, 0, out.width, out.height);
+  ctx.filter = 'none';
+  const t = MODES[mode].t;
+  if (t) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = t; ctx.fillRect(0, 0, out.width, out.height); }
+  out.toBlob(async blob => {
+    if (!blob) return toast('Salvataggio non riuscito');
+    const name = 'lente-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.jpg';
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('Foto salvata');
+    } catch (e) {
+      try { await navigator.share({ files: [new File([blob], name, { type: 'image/jpeg' })] }); }
+      catch (_) { toast('Salvataggio non riuscito'); }
+    }
+  }, 'image/jpeg', 0.93);
+};
+
+// ---- fotocamera ----
+function stopStream() {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; track = null;
+}
+async function listDevices() {
+  try {
+    const all = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    const back = all.filter(d => !/front|user|anteriore|selfie/i.test(d.label));
+    devices = back.length ? back : all;
+  } catch (e) { devices = []; }
+}
+async function start(deviceId) {
+  stopStream(); hideMsg();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return showMsg('Fotocamera non disponibile',
+      'Serve una pagina aperta in modo sicuro (https). Apri l’app dall’indirizzo https oppure installala dalla schermata Home.');
+  }
+  const size = { width: { ideal: 3840 }, height: { ideal: 2160 } };
+  const attempts = deviceId
+    ? [{ deviceId: { exact: deviceId }, ...size }, { deviceId: { exact: deviceId } }]
+    : [{ facingMode: { ideal: 'environment' }, ...size }, { facingMode: { ideal: 'environment' } }, true];
+  let err = null;
+  for (const v of attempts) {
+    try { stream = await navigator.mediaDevices.getUserMedia({ video: v, audio: false }); break; }
+    catch (e) { err = e; if (e.name === 'NotAllowedError' || e.name === 'SecurityError') break; }
+  }
+  if (!stream) {
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError');
+    return showMsg(denied ? 'Permesso negato' : 'Fotocamera non trovata',
+      denied ? 'Consenti l’accesso alla fotocamera nelle impostazioni del sito (icona del lucchetto), poi riprova.'
+             : 'Non riesco ad aprire la fotocamera. Chiudi le altre app che la usano e riprova.');
+  }
+  track = stream.getVideoTracks()[0];
+  video.srcObject = stream;
+  try { await video.play(); } catch (e) {}
+  track.addEventListener('ended', () => { if (!document.hidden) start(); });
+
+  caps = track.getCapabilities ? track.getCapabilities() : {};
+  hw = !!(caps.zoom && caps.zoom.max > caps.zoom.min);
+  hwMin = hw ? caps.zoom.min : 1; hwMax = hw ? caps.zoom.max : 1;
+  hasTorch = !!caps.torch;
+  focusCont = !!(caps.focusMode && caps.focusMode.includes('continuous'));
+  torchOn = false; zHw = hwMin; hwCur = hwMin; panX = panY = 0;
+  bTorch.hidden = !hasTorch; bTorch.setAttribute('aria-pressed', 'false');
+  try { await applyCons(); } catch (e) {}
+
+  await listDevices();
+  const cur = track.getSettings && track.getSettings().deviceId;
+  const i = devices.findIndex(d => d.deviceId === cur);
+  devIdx = i >= 0 ? i : 0;
+  bCam.hidden = devices.length < 2;
+
+  if (isFrozen) setFrozen(false);
+  Z = lo(); sync();
+  applyFilter();
+}
+bCam.onclick = async () => {
+  if (devices.length < 2) return;
+  devIdx = (devIdx + 1) % devices.length;
+  await start(devices[devIdx].deviceId);
+  $('#camL').textContent = 'Camera ' + (devIdx + 1);
+  toast('Camera ' + (devIdx + 1) + ' di ' + devices.length);
+};
+$('#retry').onclick = () => start();
+
+// ---- schermo sempre acceso ----
+let wl = null;
+async function keepAwake() { try { wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  keepAwake();
+  if (!track || track.readyState === 'ended') start();
+  else video.play().catch(() => {});
+});
+
+// ridimensionamento (apertura/chiusura del Fold)
+let rz;
+new ResizeObserver(() => { clearTimeout(rz); rz = setTimeout(sync, 60); }).observe(stage);
+
+// ---- avvio ----
+applyFilter(); sync();
+$('#hint').classList.add('show'); setTimeout(hideHint, 5000);
+start(); keepAwake();
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+// per i test
+window.__lente = { get state() { return { Z, D, hw, hwMin, hwMax, isFrozen, mode, panX, panY }; } };
+})();
+</script>
+</body>
+</html>
