@@ -120,6 +120,8 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
     <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
   </button>
 
+  <button class="fab" id="bInstall" hidden aria-label="Installa l'app sul telefono" style="right:calc(76px + env(safe-area-inset-right));width:auto;padding:0 18px;border-radius:26px;background:var(--acc);border-color:var(--acc);color:#000;font-weight:700;font-size:15px">Installa</button>
+
   <aside id="panel">
     <div id="adjust">
       <div class="chips" id="chips" role="group" aria-label="Filtro colore"></div>
@@ -455,6 +457,21 @@ start(); keepAwake();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+// ---- installazione come app ----
+let installEv = null;
+const bInstall = $('#bInstall');
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); installEv = e;
+  if (!standalone()) bInstall.hidden = false;
+});
+bInstall.onclick = async () => {
+  if (!installEv) return;
+  installEv.prompt();
+  try { await installEv.userChoice; } catch (e) {}
+  installEv = null; bInstall.hidden = true;
+};
+window.addEventListener('appinstalled', () => { bInstall.hidden = true; toast('App installata'); });
 // per i test
 window.__lente = { get state() { return { Z, D, hw, hwMin, hwMax, isFrozen, mode, panX, panY }; } };
 })();
