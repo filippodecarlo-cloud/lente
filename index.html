@@ -19,16 +19,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
   overscroll-behavior:none;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 button{font:inherit;color:inherit;cursor:pointer}
 
-#app{position:fixed;inset:0;display:grid;grid-template-rows:minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#app{position:fixed;inset:0}
 
 /* ---- Palco immagine ---- */
-#stage{position:relative;overflow:hidden;background:#000;isolation:isolate;touch-action:none;min-height:0}
+#stage{position:absolute;inset:0;overflow:hidden;background:#000;isolation:isolate;touch-action:none;min-height:0}
 .layer{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;
   transform-origin:50% 50%;will-change:transform,filter;background:#000}
 #frozen{display:none}
 #tint{position:absolute;inset:0;mix-blend-mode:multiply;pointer-events:none;display:none}
-.badges{position:absolute;left:12px;top:12px;display:flex;gap:8px;z-index:5;pointer-events:none;flex-wrap:wrap}
+.badges{position:absolute;left:calc(12px + env(safe-area-inset-left));top:calc(12px + env(safe-area-inset-top));display:flex;gap:8px;z-index:5;pointer-events:none;flex-wrap:wrap}
 .badge{background:rgba(0,0,0,.72);color:var(--fg);border:1px solid rgba(255,255,255,.25);
   padding:6px 14px;border-radius:999px;font-weight:700;font-size:20px;letter-spacing:.2px;
   font-variant-numeric:tabular-nums}
@@ -37,9 +36,8 @@ button{font:inherit;color:inherit;cursor:pointer}
   background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);border-radius:14px;
   padding:10px 16px;text-align:center;width:max-content;max-width:calc(100% - 24px);pointer-events:none;
   opacity:0;transition:opacity .25s}
-#hint{bottom:16px}
-#toast{top:64px}
-#hint.show,#toast.show{opacity:1}
+#hint{bottom:calc(160px + env(safe-area-inset-bottom))}
+#toast{top:calc(68px + env(safe-area-inset-top))}#hint.show,#toast.show{opacity:1}
 
 #msg{position:absolute;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;
   justify-content:center;gap:16px;padding:28px;text-align:center;background:#0c0c0e}
@@ -48,10 +46,21 @@ button{font:inherit;color:inherit;cursor:pointer}
 #msg button{background:var(--acc);color:#000;border:0;border-radius:14px;padding:14px 26px;font-weight:700;font-size:18px}
 
 /* ---- Pannello comandi ---- */
-#panel{background:var(--panel);border-top:1px solid var(--line);padding:10px 12px 12px;
-  display:flex;flex-direction:column;gap:10px;touch-action:manipulation}
-.zrow{display:flex;align-items:center;gap:10px}
-.rb{flex:none;width:56px;height:56px;border-radius:50%;border:1px solid var(--line);
+#panel{position:absolute;z-index:7;left:50%;transform:translateX(-50%);
+  bottom:calc(8px + env(safe-area-inset-bottom));width:min(calc(100% - 16px),580px);
+  max-height:calc(100% - 90px);overflow-y:auto;
+  background:rgba(23,24,27,.84);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border:1px solid var(--line);border-radius:22px;padding:8px 10px 10px;
+  display:flex;flex-direction:column;gap:8px;touch-action:manipulation}
+#panel.off{display:none}
+.fab{position:absolute;z-index:9;right:calc(12px + env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));
+  width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.3);
+  background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center}
+.fab svg{width:26px;height:26px;stroke:#fff;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.fab[aria-pressed=true]{background:var(--acc);border-color:var(--acc)}
+.fab[aria-pressed=true] svg{stroke:#000}
+.zrow{display:flex;align-items:center;gap:8px}
+.rb{flex:none;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);
   background:var(--panel2);font-size:30px;line-height:1;font-weight:500}
 .rb:active{background:#34373e}
 input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:44px;background:transparent;margin:0}
@@ -61,8 +70,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;heigh
 input[type=range]::-moz-range-track{height:8px;border-radius:99px;background:#3b3d44}
 input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:var(--acc);border:3px solid #000}
 
-.chips{display:flex;gap:8px;overflow-x:auto;touch-action:pan-x;scrollbar-width:none;padding:2px 0}
-.chips::-webkit-scrollbar{display:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:2px 0}
 .chip{flex:none;border:1px solid var(--line);background:var(--panel2);border-radius:999px;
   padding:10px 16px;font-size:15px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:8px}
 .chip i{width:18px;height:18px;border-radius:50%;border:1px solid #888;display:inline-block}
@@ -70,29 +78,25 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
 
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px}
 .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  min-height:68px;padding:8px 4px;border-radius:var(--r);border:1px solid var(--line);
-  background:var(--panel2);font-size:13px;font-weight:600}
-.btn svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  min-height:56px;padding:6px 2px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--panel2);font-size:12px;font-weight:600}
+.btn svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .btn:active{background:#34373e}
 .btn[aria-pressed=true]{background:var(--acc);color:#000;border-color:var(--acc)}
 .btn[hidden]{display:none}
 
-#adjust{display:none;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:8px}
+#adjust{display:none;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
 #adjust.open{display:flex}
 .arow{display:flex;align-items:center;gap:10px}
 .arow label{width:78px;font-size:14px;color:var(--mut)}
 .arow output{width:44px;text-align:right;font-variant-numeric:tabular-nums;font-size:14px;color:var(--mut)}
 #reset{align-self:flex-end;background:none;border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:14px}
 
-/* ---- Schermo largo / interno del Fold: comandi a destra ---- */
-@media (min-aspect-ratio: 1/1){
-  #app{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) clamp(300px,34vw,400px)}
-  #panel{border-top:0;border-left:1px solid var(--line);overflow-y:auto;justify-content:center;gap:14px;padding:14px}
-  .rb{width:60px;height:60px}
-  .chips{flex-wrap:wrap;overflow:visible}
-}
-@media (max-height:430px) and (min-aspect-ratio: 1/1){
-  .btn{min-height:56px}.btn span{display:none}
+/* ---- Schermi bassi (orizzontale): barra ancora più compatta ---- */
+@media (max-height:480px){
+  .btn span{display:none}.btn{min-height:46px}
+  .rb{width:42px;height:42px;font-size:26px}
+  #hint{bottom:calc(136px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
@@ -112,14 +116,23 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
     </div>
   </div>
 
+  <button class="fab" id="bHide" aria-pressed="false" aria-label="Nascondi i comandi">
+    <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+
   <aside id="panel">
+    <div id="adjust">
+      <div class="chips" id="chips" role="group" aria-label="Filtro colore"></div>
+      <div class="arow"><label for="bri">Luminosità</label><input id="bri" type="range" min="50" max="200" value="100"><output id="briV">100%</output></div>
+      <div class="arow"><label for="con">Contrasto</label><input id="con" type="range" min="50" max="300" value="100"><output id="conV">100%</output></div>
+      <button id="reset">Ripristina</button>
+    </div>
+
     <div class="zrow">
       <button class="rb" id="zout" aria-label="Riduci zoom">−</button>
       <input id="zoom" type="range" min="0" max="1000" value="0" aria-label="Zoom">
       <button class="rb" id="zin" aria-label="Aumenta zoom">+</button>
     </div>
-
-    <div class="chips" id="chips" role="group" aria-label="Filtro colore"></div>
 
     <div class="grid">
       <button class="btn" id="bFreeze" aria-pressed="false">
@@ -131,13 +144,7 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
       <button class="btn" id="bSnap">
         <svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/></svg><span>Salva foto</span></button>
       <button class="btn" id="bAdj" aria-pressed="false">
-        <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2" fill="#17181b"/><circle cx="15" cy="12" r="2" fill="#17181b"/><circle cx="8" cy="18" r="2" fill="#17181b"/></svg><span>Regola</span></button>
-    </div>
-
-    <div id="adjust">
-      <div class="arow"><label for="bri">Luminosità</label><input id="bri" type="range" min="50" max="200" value="100"><output id="briV">100%</output></div>
-      <div class="arow"><label for="con">Contrasto</label><input id="con" type="range" min="50" max="300" value="100"><output id="conV">100%</output></div>
-      <button id="reset">Ripristina</button>
+        <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2" fill="#17181b"/><circle cx="15" cy="12" r="2" fill="#17181b"/><circle cx="8" cy="18" r="2" fill="#17181b"/></svg><span>Filtri</span></button>
     </div>
   </aside>
 </div>
@@ -215,6 +222,12 @@ $('#reset').onclick = () => { bright = 1; contrast = 1; applyFilter(); save(); }
 bAdj.onclick = () => {
   const open = $('#adjust').classList.toggle('open');
   bAdj.setAttribute('aria-pressed', open);
+};
+// nascondi / mostra i comandi: immagine a tutto schermo
+$('#bHide').onclick = () => {
+  const off = $('#panel').classList.toggle('off');
+  $('#bHide').setAttribute('aria-pressed', off);
+  $('#bHide').setAttribute('aria-label', off ? 'Mostra i comandi' : 'Nascondi i comandi');
 };
 
 // ---- zoom ----
