@@ -32,6 +32,10 @@ button{font:inherit;color:inherit;cursor:pointer}
   padding:6px 14px;border-radius:999px;font-weight:700;font-size:20px;letter-spacing:.2px;
   font-variant-numeric:tabular-nums}
 .badge.lock{color:#000;background:var(--acc);border-color:var(--acc);font-size:14px;display:none;align-items:center}
+#ring{position:absolute;z-index:4;width:76px;height:76px;margin:-38px 0 0 -38px;border:3px solid var(--acc);
+  border-radius:50%;pointer-events:none;opacity:0;box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.6)}
+#ring.go{animation:ring 1.1s ease-out}
+@keyframes ring{0%{opacity:1;transform:scale(1.7)}25%{opacity:1;transform:scale(1)}75%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 #hint,#toast{position:absolute;left:50%;transform:translateX(-50%);z-index:6;
   background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.25);border-radius:14px;
   padding:10px 16px;text-align:center;width:max-content;max-width:calc(100% - 24px);pointer-events:none;
@@ -106,9 +110,10 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
     <video id="video" class="layer" playsinline muted autoplay></video>
     <canvas id="frozen" class="layer"></canvas>
     <div id="tint"></div>
+    <div id="ring"></div>
     <div class="badges"><div class="badge" id="zval">×1.0</div><div class="badge lock" id="lockb">FERMO</div></div>
     <div id="toast" role="status"></div>
-    <div id="hint">Pizzica per ingrandire · trascina per spostare</div>
+    <div id="hint">Tocca per mettere a fuoco · pizzica per ingrandire · trascina per spostare</div>
     <div id="msg">
       <h2 id="msgT">Fotocamera</h2>
       <p id="msgP"></p>
@@ -173,6 +178,7 @@ let devices = [], devIdx = 0;
 let hw = false, hwMin = 1, hwMax = 1, hwCur = 1, hasTorch = false, focusCont = false;
 let Z = 1, panX = 0, panY = 0, D = 1;
 let isFrozen = false, torchOn = false;
+let poi = null, focusT = null, focusWarned = false, tap = null;
 let mode = 'normal', bright = 1, contrast = 1;
 
 // ---- impostazioni salvate (opzionali) ----
@@ -243,7 +249,10 @@ async function applyCons() {
   if (hw) a.zoom = zHw;
   if (hasTorch) a.torch = torchOn;
   if (focusCont) a.focusMode = 'continuous';
-  if (Object.keys(a).length) await track.applyConstraints({ advanced: [a] });
+  const sets = [];
+  if (Object.keys(a).length) sets.push(a);
+  if (poi) sets.push({ pointsOfInterest: [poi] });   // insieme separato: se non supportato, non blocca zoom e torcia
+  if (sets.length) await track.applyConstraints({ advanced: sets });
 }
 async function pushHw() {
   if (!track) return;
@@ -291,6 +300,8 @@ stage.addEventListener('pointerdown', e => {
   if (e.target.closest('#msg')) return;
   stage.setPointerCapture(e.pointerId);
   ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (ptrs.size === 1) tap = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
+  else if (tap) tap.moved = true;
   if (ptrs.size === 2) { d0 = pdist(); z0 = Z; }
   hideHint();
 });
@@ -298,10 +309,44 @@ stage.addEventListener('pointermove', e => {
   const p = ptrs.get(e.pointerId); if (!p) return;
   const dx = e.clientX - p.x, dy = e.clientY - p.y;
   p.x = e.clientX; p.y = e.clientY;
+  if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 12) tap.moved = true;
   if (ptrs.size >= 2) setZoom(z0 * pdist() / d0);
   else if (D > 1.001) { panX += dx; panY += dy; clampPan(); transform(); }
 });
-const up = e => { ptrs.delete(e.pointerId); if (ptrs.size === 1) { /* riparte il trascinamento */ } };
+const up = e => {
+  const wasOne = ptrs.size === 1;
+  ptrs.delete(e.pointerId);
+  if (e.type === 'pointerup' && wasOne && tap && !tap.moved && performance.now() - tap.t < 600) focusAt(e.clientX, e.clientY);
+  if (!ptrs.size) tap = null;
+};
+
+// ---- tocca per mettere a fuoco ----
+function showRing(x, y) {
+  const r = $('#ring');
+  r.style.left = x + 'px'; r.style.top = y + 'px';
+  r.classList.remove('go'); void r.offsetWidth; r.classList.add('go');
+}
+function focusAt(cx, cy) {
+  const rc = stage.getBoundingClientRect();
+  const x = cx - rc.left, y = cy - rc.top;
+  showRing(x, y);
+  if (isFrozen || !track) return;
+  const sw = video.videoWidth, sh = video.videoHeight; if (!sw) return;
+  const W = rc.width, H = rc.height, s = Math.max(W / sw, H / sh);          // object-fit: cover
+  const px = W / 2 + (x - W / 2 - panX) / D, py = H / 2 + (y - H / 2 - panY) / D; // annulla pan e zoom digitale
+  poi = {
+    x: Math.min(1, Math.max(0, 0.5 + (px - W / 2) / (s * sw))),
+    y: Math.min(1, Math.max(0, 0.5 + (py - H / 2) / (s * sh))),
+  };
+  const adv = { pointsOfInterest: [poi] };
+  if (caps.focusMode && caps.focusMode.includes('single-shot')) adv.focusMode = 'single-shot';  // rimette a fuoco subito
+  track.applyConstraints({ advanced: [adv] }).then(() => {
+    clearTimeout(focusT);
+    focusT = setTimeout(() => { applyCons().catch(() => {}); }, 1500);   // poi torna all'autofocus continuo su quel punto
+  }).catch(() => {
+    if (!focusWarned) { focusWarned = true; toast('Questa camera non permette di scegliere il punto a fuoco'); }
+  });
+}
 stage.addEventListener('pointerup', up);
 stage.addEventListener('pointercancel', up);
 stage.addEventListener('wheel', e => { e.preventDefault(); setZoom(Z * Math.exp(-e.deltaY / 400)); }, { passive: false });
@@ -413,7 +458,7 @@ async function start(deviceId) {
   hwMin = hw ? caps.zoom.min : 1; hwMax = hw ? caps.zoom.max : 1;
   hasTorch = !!caps.torch;
   focusCont = !!(caps.focusMode && caps.focusMode.includes('continuous'));
-  torchOn = false; zHw = hwMin; hwCur = hwMin; panX = panY = 0;
+  torchOn = false; zHw = hwMin; hwCur = hwMin; panX = panY = 0; poi = null;
   bTorch.hidden = !hasTorch; bTorch.setAttribute('aria-pressed', 'false');
   try { await applyCons(); } catch (e) {}
 
@@ -473,7 +518,7 @@ bInstall.onclick = async () => {
 };
 window.addEventListener('appinstalled', () => { bInstall.hidden = true; toast('App installata'); });
 // per i test
-window.__lente = { get state() { return { Z, D, hw, hwMin, hwMax, isFrozen, mode, panX, panY }; } };
+window.__lente = { get state() { return { Z, D, hw, hwMin, hwMax, isFrozen, mode, panX, panY, poi }; } };
 })();
 </script>
 </body>
