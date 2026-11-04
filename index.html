@@ -31,6 +31,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .badge{background:rgba(0,0,0,.72);color:var(--fg);border:1px solid rgba(255,255,255,.25);
   padding:6px 14px;border-radius:999px;font-weight:700;font-size:20px;letter-spacing:.2px;
   font-variant-numeric:tabular-nums}
+.badge.recb{display:none;background:#e5372b;border-color:#e5372b;color:#fff;font-size:16px;align-items:center;gap:8px}
+.badge.recb i{width:10px;height:10px;border-radius:50%;background:#fff;animation:blink 1s steps(2,start) infinite}
+@keyframes blink{50%{opacity:.15}}
 .badge.lock{color:#000;background:var(--acc);border-color:var(--acc);font-size:14px;display:none;align-items:center}
 #ring{position:absolute;z-index:4;width:76px;height:76px;margin:-38px 0 0 -38px;border:3px solid var(--acc);
   border-radius:50%;pointer-events:none;opacity:0;box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.6)}
@@ -80,14 +83,34 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
 .chip i{width:18px;height:18px;border-radius:50%;border:1px solid #888;display:inline-block}
 .chip[aria-pressed=true]{background:var(--acc);color:#000;border-color:var(--acc)}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(48px,1fr));gap:6px}
 .btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
-  min-height:56px;padding:6px 2px;border-radius:var(--r);border:1px solid var(--line);
-  background:var(--panel2);font-size:12px;font-weight:600}
+  min-height:56px;padding:6px 1px;border-radius:var(--r);border:1px solid var(--line);
+  background:var(--panel2);font-size:11px;font-weight:600}
 .btn svg{width:26px;height:26px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .btn:active{background:#34373e}
 .btn[aria-pressed=true]{background:var(--acc);color:#000;border-color:var(--acc)}
 .btn[hidden]{display:none}
+.btn.rec{background:#e5372b;border-color:#e5372b;color:#fff}
+#media{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
+#media[hidden]{display:none}
+#mThumb{flex:none;width:48px;height:48px;border-radius:10px;overflow:hidden;padding:0;border:1px solid var(--line);background:#000;position:relative}
+#mThumb img{width:100%;height:100%;object-fit:cover;display:block}
+#mThumb .play{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
+#mThumb .play svg{width:22px;height:22px;fill:#fff}
+#mThumb.vid .play{display:flex}
+.mtxt{flex:1;min-width:0;display:flex;flex-direction:column}
+.mtxt b{font-size:14px}.mtxt span{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);
+  display:flex;align-items:center;justify-content:center;padding:0}
+.ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ib.primary{background:var(--acc);border-color:var(--acc);color:#000}
+.ib[hidden]{display:none}
+.sw{width:28px;height:28px;accent-color:var(--acc);margin:0}
+#preview{position:fixed;inset:0;z-index:20;background:#000;display:none;align-items:center;justify-content:center}
+#preview.open{display:flex}
+#preview img,#preview video{max-width:100%;max-height:100%;object-fit:contain}
+#pvClose{position:absolute;right:calc(12px + env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));z-index:2}
 
 #adjust{display:none;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);padding-bottom:8px}
 #adjust.open{display:flex}
@@ -111,7 +134,7 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
     <canvas id="frozen" class="layer"></canvas>
     <div id="tint"></div>
     <div id="ring"></div>
-    <div class="badges"><div class="badge" id="zval">×1.0</div><div class="badge lock" id="lockb">FERMO</div></div>
+    <div class="badges"><div class="badge" id="zval">×1.0</div><div class="badge lock" id="lockb">FERMO</div><div class="badge recb" id="recb"><i></i><span id="recT">0:00</span></div></div>
     <div id="toast" role="status"></div>
     <div id="hint">Tocca per mettere a fuoco · pizzica per ingrandire · trascina per spostare</div>
     <div id="msg">
@@ -127,10 +150,26 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
 
   <button class="fab" id="bInstall" hidden aria-label="Installa l'app sul telefono" style="right:calc(76px + env(safe-area-inset-right));width:auto;padding:0 18px;border-radius:26px;background:var(--acc);border-color:var(--acc);color:#000;font-weight:700;font-size:15px">Installa</button>
 
+  <div id="preview" role="dialog" aria-label="Anteprima">
+    <div id="pvBody"></div>
+    <button class="fab" id="pvClose" aria-label="Chiudi anteprima"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+
   <aside id="panel">
+    <div id="media" hidden>
+      <button id="mThumb" aria-label="Apri anteprima"><img id="mImg" alt=""><span class="play"><svg viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></svg></span></button>
+      <div class="mtxt"><b id="mT">Foto</b><span id="mS"></span></div>
+      <button class="ib primary" id="mShare" aria-label="Condividi" hidden>
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.8l7.4-4.4M8.3 13.2l7.4 4.4"/></svg></button>
+      <button class="ib" id="mSave" aria-label="Salva sul telefono">
+        <svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/></svg></button>
+      <button class="ib" id="mClose" aria-label="Chiudi">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
     <div id="adjust">
       <div class="chips" id="chips" role="group" aria-label="Filtro colore"></div>
       <div class="arow"><label for="bri">Luminosità</label><input id="bri" type="range" min="50" max="200" value="100"><output id="briV">100%</output></div>
+      <div class="arow"><label for="aud" style="width:auto;flex:1">Registra anche l’audio nei video</label><input id="aud" class="sw" type="checkbox"></div>
       <div class="arow"><label for="con">Contrasto</label><input id="con" type="range" min="50" max="300" value="100"><output id="conV">100%</output></div>
       <button id="reset">Ripristina</button>
     </div>
@@ -147,9 +186,11 @@ input[type=range]::-moz-range-thumb{width:28px;height:28px;border-radius:50%;bac
       <button class="btn" id="bTorch" aria-pressed="false" hidden>
         <svg viewBox="0 0 24 24"><path d="M9 3h6l-1 5h-4z"/><path d="M10 8v3l-2 2v8h8v-8l-2-2V8"/><path d="M12 14v3"/></svg><span>Luce</span></button>
       <button class="btn" id="bCam" hidden>
-        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg><span id="camL">Camera</span></button>
+        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.5-5.8L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.5 5.8L4 15.5"/><path d="M4 20v-4.5h4.5"/></svg><span id="camL">Cam</span></button>
       <button class="btn" id="bSnap">
-        <svg viewBox="0 0 24 24"><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M5 19h14"/></svg><span>Salva foto</span></button>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/></svg><span>Foto</span></button>
+      <button class="btn" id="bVid" aria-pressed="false">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="12" height="11" rx="2.2"/><path d="M15 10.5l6-3.2v9.4l-6-3.2z"/></svg><span>Video</span></button>
       <button class="btn" id="bAdj" aria-pressed="false">
         <svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h14"/><circle cx="9" cy="6" r="2" fill="#17181b"/><circle cx="15" cy="12" r="2" fill="#17181b"/><circle cx="8" cy="18" r="2" fill="#17181b"/></svg><span>Filtri</span></button>
     </div>
@@ -179,7 +220,8 @@ let hw = false, hwMin = 1, hwMax = 1, hwCur = 1, hasTorch = false, focusCont = f
 let Z = 1, panX = 0, panY = 0, D = 1;
 let isFrozen = false, torchOn = false;
 let poi = null, focusT = null, focusWarned = false, tap = null;
-let mode = 'normal', bright = 1, contrast = 1;
+let mode = 'normal', bright = 1, contrast = 1, audioOn = false;
+let rec = null, recBusy = false, last = null;
 
 // ---- impostazioni salvate (opzionali) ----
 try {
@@ -187,8 +229,9 @@ try {
   if (MODES[s.mode]) mode = s.mode;
   if (s.bright >= .5 && s.bright <= 2) bright = s.bright;
   if (s.contrast >= .5 && s.contrast <= 3) contrast = s.contrast;
+  if (s.audio === true) audioOn = true;
 } catch (e) {}
-const save = () => { try { localStorage.setItem('lente', JSON.stringify({ mode, bright, contrast })); } catch (e) {} };
+const save = () => { try { localStorage.setItem('lente', JSON.stringify({ mode, bright, contrast, audio: audioOn })); } catch (e) {} };
 
 // ---- utilità UI ----
 let toastT;
@@ -226,6 +269,8 @@ for (const [k, m] of Object.entries(MODES)) {
 }
 $('#bri').oninput = e => { bright = e.target.value / 100; applyFilter(); save(); };
 $('#con').oninput = e => { contrast = e.target.value / 100; applyFilter(); save(); };
+$('#aud').checked = audioOn;
+$('#aud').onchange = e => { audioOn = e.target.checked; save(); };
 $('#reset').onclick = () => { bright = 1; contrast = 1; applyFilter(); save(); };
 bAdj.onclick = () => {
   const open = $('#adjust').classList.toggle('open');
@@ -382,38 +427,148 @@ bTorch.onclick = async () => {
   bTorch.setAttribute('aria-pressed', torchOn);
 };
 
-// ---- foto ----
-bSnap.onclick = async () => {
+// ---- zona visibile: serve a foto e video ----
+function region() {
   const src = isFrozen ? frozen : video;
   const sw = isFrozen ? frozen.width : video.videoWidth, sh = isFrozen ? frozen.height : video.videoHeight;
-  if (!sw) return toast('Nessuna immagine da salvare');
+  if (!sw || !sh) return null;
   const W = stage.clientWidth, H = stage.clientHeight;
-  const s = Math.max(W / sw, H / sh) * D;               // pixel di schermo per pixel sorgente
-  const rw = W / s, rh = H / s;
-  const cx = sw / 2 - panX / s, cy = sh / 2 - panY / s;
-  const out = document.createElement('canvas');
-  out.width = Math.round(rw); out.height = Math.round(rh);
-  const ctx = out.getContext('2d');
+  const s = Math.max(W / sw, H / sh) * D;                 // pixel di schermo per pixel sorgente
+  const w = W / s, h = H / s;
+  return { src, x: sw / 2 - panX / s - w / 2, y: sh / 2 - panY / s - h / 2, w, h, W, H };
+}
+function paint(ctx, r, ow, oh) {
   ctx.filter = filterString() || 'none';
-  ctx.drawImage(src, cx - rw / 2, cy - rh / 2, rw, rh, 0, 0, out.width, out.height);
+  ctx.drawImage(r.src, r.x, r.y, r.w, r.h, 0, 0, ow, oh);
   ctx.filter = 'none';
   const t = MODES[mode].t;
-  if (t) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = t; ctx.fillRect(0, 0, out.width, out.height); }
-  out.toBlob(async blob => {
-    if (!blob) return toast('Salvataggio non riuscito');
-    const name = 'lente-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + '.jpg';
-    try {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      toast('Foto salvata');
-    } catch (e) {
-      try { await navigator.share({ files: [new File([blob], name, { type: 'image/jpeg' })] }); }
-      catch (_) { toast('Salvataggio non riuscito'); }
-    }
+  if (t) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = t; ctx.fillRect(0, 0, ow, oh); ctx.globalCompositeOperation = 'source-over'; }
+}
+const stamp = () => 'lente-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+const fmtSize = n => n > 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const fmtDur = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+
+// ---- ultimo scatto / video: anteprima, condividi, salva ----
+const mediaCard = $('#media'), mThumb = $('#mThumb');
+$('#mShare').hidden = !navigator.share;
+function setLast(blob, kind, name, extra, thumbUrl) {
+  if (last) URL.revokeObjectURL(last.url);
+  const url = URL.createObjectURL(blob);
+  last = { blob, kind, name, url };
+  $('#mImg').src = kind === 'Video' ? thumbUrl : url;
+  mThumb.classList.toggle('vid', kind === 'Video');
+  $('#mT').textContent = kind;
+  $('#mS').textContent = (extra ? extra + ' · ' : '') + fmtSize(blob.size);
+  mediaCard.hidden = false;
+}
+$('#mClose').onclick = () => { mediaCard.hidden = true; };
+$('#mSave').onclick = () => {
+  if (!last) return;
+  const a = document.createElement('a');
+  a.href = last.url; a.download = last.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(last.kind + ' salvato nei download');
+};
+$('#mShare').onclick = async () => {
+  if (!last) return;
+  const f = new File([last.blob], last.name, { type: last.blob.type });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: 'Lente' });
+    else toast('Condivisione non disponibile: usa Salva');
+  } catch (e) { if (e.name !== 'AbortError') toast('Condivisione non riuscita'); }
+};
+mThumb.onclick = () => {
+  if (!last) return;
+  const body = $('#pvBody'); body.innerHTML = '';
+  const el = document.createElement(last.kind === 'Video' ? 'video' : 'img');
+  el.src = last.url;
+  if (last.kind === 'Video') { el.controls = true; el.playsInline = true; el.autoplay = true; }
+  body.appendChild(el);
+  $('#preview').classList.add('open');
+};
+$('#pvClose').onclick = () => { $('#preview').classList.remove('open'); $('#pvBody').innerHTML = ''; };
+
+// ---- foto ----
+bSnap.onclick = () => {
+  const r = region(); if (!r) return toast('Nessuna immagine da salvare');
+  const out = document.createElement('canvas');
+  out.width = Math.round(r.w); out.height = Math.round(r.h);
+  paint(out.getContext('2d'), r, out.width, out.height);
+  out.toBlob(blob => {
+    if (!blob) return toast('Foto non riuscita');
+    setLast(blob, 'Foto', stamp() + '.jpg', out.width + '×' + out.height);
   }, 'image/jpeg', 0.93);
 };
+
+// ---- video: registra ciò che vedi (zoom, spostamento e filtri compresi) ----
+const bVid = $('#bVid'), recb = $('#recb');
+function pickMime() {
+  const c = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  return c.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+function recUI(on) {
+  bVid.classList.toggle('rec', on);
+  bVid.setAttribute('aria-pressed', on);
+  bVid.querySelector('span').textContent = on ? 'Stop' : 'Video';
+  bVid.querySelector('svg').innerHTML = on
+    ? '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>'
+    : '<rect x="3" y="6.5" width="12" height="11" rx="2.2"/><path d="M15 10.5l6-3.2v9.4l-6-3.2z"/>';
+  recb.style.display = on ? 'flex' : 'none';
+  if (on) $('#recT').textContent = '0:00';
+}
+async function startRec() {
+  if (recBusy || rec) return;
+  if (!track || !window.MediaRecorder) return toast('Registrazione video non supportata da questo browser');
+  const r = region(); if (!r) return toast('Fotocamera non pronta');
+  recBusy = true;
+  const k = 1920 / Math.max(r.W, r.H);                       // lato lungo al massimo 1920 px
+  const ow = Math.max(2, Math.round(r.W * k / 2) * 2), oh = Math.max(2, Math.round(r.H * k / 2) * 2);
+  const cv = document.createElement('canvas'); cv.width = ow; cv.height = oh;
+  const ctx = cv.getContext('2d');
+  let mic = null;
+  if (audioOn) {
+    try { mic = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch (e) { toast('Microfono non disponibile: registro senza audio'); }
+  }
+  const out = cv.captureStream(30);
+  if (mic) mic.getAudioTracks().forEach(t => out.addTrack(t));
+  const mime = pickMime();
+  let mr;
+  try { mr = new MediaRecorder(out, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: 8e6 }); }
+  catch (e) { if (mic) mic.getTracks().forEach(t => t.stop()); recBusy = false; return toast('Registrazione video non supportata'); }
+  const chunks = [];
+  mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const t0 = performance.now();
+  mr.onstop = () => {
+    const base = (mr.mimeType || mime || 'video/webm').split(';')[0];
+    const blob = new Blob(chunks, { type: base });
+    out.getTracks().forEach(t => t.stop());
+    if (mic) mic.getTracks().forEach(t => t.stop());
+    recBusy = false;
+    if (!blob.size) return toast('Video vuoto: riprova');
+    setLast(blob, 'Video', stamp() + (base.includes('mp4') ? '.mp4' : '.webm'), fmtDur((performance.now() - t0) / 1000), cv.toDataURL('image/jpeg', 0.6));
+  };
+  rec = { mr, raf: 0, secs: -1 };
+  paint(ctx, r, ow, oh);
+  mr.start(1000);
+  recUI(true);
+  const loop = () => {
+    if (!rec) return;
+    const rg = region(); if (rg) paint(ctx, rg, ow, oh);
+    const sec = Math.floor((performance.now() - t0) / 1000);
+    if (sec !== rec.secs) { rec.secs = sec; $('#recT').textContent = fmtDur(sec); }
+    rec.raf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+function stopRec() {
+  if (!rec) return;
+  const r = rec; rec = null;
+  cancelAnimationFrame(r.raf);
+  recUI(false);
+  try { r.mr.stop(); } catch (e) { recBusy = false; }
+}
+bVid.onclick = () => (rec ? stopRec() : startRec());
 
 // ---- fotocamera ----
 function stopStream() {
@@ -428,6 +583,7 @@ async function listDevices() {
   } catch (e) { devices = []; }
 }
 async function start(deviceId) {
+  if (rec) stopRec();
   stopStream(); hideMsg();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return showMsg('Fotocamera non disponibile',
@@ -476,7 +632,7 @@ bCam.onclick = async () => {
   if (devices.length < 2) return;
   devIdx = (devIdx + 1) % devices.length;
   await start(devices[devIdx].deviceId);
-  $('#camL').textContent = 'Camera ' + (devIdx + 1);
+  $('#camL').textContent = 'Cam ' + (devIdx + 1);
   toast('Camera ' + (devIdx + 1) + ' di ' + devices.length);
 };
 $('#retry').onclick = () => start();
@@ -485,7 +641,7 @@ $('#retry').onclick = () => start();
 let wl = null;
 async function keepAwake() { try { wl = await navigator.wakeLock.request('screen'); } catch (e) {} }
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
+  if (document.hidden) { if (rec) stopRec(); return; }
   keepAwake();
   if (!track || track.readyState === 'ended') start();
   else video.play().catch(() => {});
